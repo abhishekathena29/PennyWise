@@ -55,4 +55,8 @@ class ProfileRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
+
+  Future<void> deleteProfile(String uid) {
+    return _userDoc(uid).delete();
+  }
 }

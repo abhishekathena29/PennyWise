@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/widgets/app_feedback_snackbar.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/formatters.dart';
+import '../../../widgets/app_logo.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../goals/providers/goals_provider.dart';
 import '../../profile/providers/profile_provider.dart';
@@ -16,8 +18,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _darkMode = false;
-
   Future<void> _editName(BuildContext context, String currentName) async {
     final controller = TextEditingController(text: currentName);
     final profileProvider = context.read<ProfileProvider>();
@@ -48,6 +48,67 @@ class _SettingsPageState extends State<SettingsPage> {
     await profileProvider.updateName(controller.text.trim());
   }
 
+  Future<void> _deleteAccount(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final transactionsProvider = context.read<TransactionsProvider>();
+    final goalsProvider = context.read<GoalsProvider>();
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently removes your account and clears your saved profile, transactions, and goals.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.expense,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !mounted) {
+      return;
+    }
+
+    final result = await authProvider.deleteAccount(
+      transactionIds: transactionsProvider.transactions.map((item) => item.id),
+      goalIds: goalsProvider.goals.map((item) => item.id),
+    );
+    if (!context.mounted) {
+      return;
+    }
+    if (result.isSuccess) {
+      Navigator.of(context).pop();
+      AppFeedbackSnackBar.show(
+        context: context,
+        title: 'Account deleted',
+        message: 'Your PennyWise account has been removed.',
+        icon: Icons.delete_forever_outlined,
+        color: AppTheme.expense,
+      );
+      return;
+    }
+    final feedback = result.feedback ?? authProvider.lastFeedback;
+    if (feedback != null && context.mounted) {
+      AppFeedbackSnackBar.show(
+        context: context,
+        title: feedback.title,
+        message: feedback.message,
+        icon: feedback.icon,
+        color: feedback.color,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
@@ -55,33 +116,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final goalsProvider = context.watch<GoalsProvider>();
     final profile = profileProvider.profile;
 
-    final accountItems = [
-      _SettingItem(
-        icon: Icons.person_outline,
-        label: 'Edit Profile',
-        subtitle: 'Update your display name',
-        color: const Color(0xFF25B8A3),
-        onTap: profile == null ? null : () => _editName(context, profile.name),
-      ),
-      _SettingItem(
-        icon: Icons.receipt_long,
-        label: 'Transactions',
-        subtitle: '${transactionsProvider.transactions.length} items synced',
-        color: const Color(0xFF29B6F6),
-      ),
-      _SettingItem(
-        icon: Icons.flag_outlined,
-        label: 'Saving Goals',
-        subtitle: '${goalsProvider.goals.length} active goals',
-        color: const Color(0xFFF2A23A),
-      ),
-      _SettingItem(
-        icon: Icons.savings_outlined,
-        label: 'Saved So Far',
-        subtitle: formatCurrency(goalsProvider.totalSaved, decimals: 0),
-        color: const Color(0xFF24B37E),
-      ),
-    ];
+    final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -132,13 +167,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    profile?.initials ?? 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: const AppLogo(
+                    size: 80,
+                    padding: 12,
+                    backgroundColor: Colors.transparent,
+                    borderRadius: BorderRadius.all(Radius.circular(40)),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -225,64 +258,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.card,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF7E57C2,
-                              ).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.dark_mode_outlined,
-                              color: Color(0xFF7E57C2),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Dark Mode',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                Text(
-                                  'UI toggle only for now',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppTheme.mutedForeground,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: _darkMode,
-                            onChanged: (value) =>
-                                setState(() => _darkMode = value),
-                            activeThumbColor: AppTheme.primary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                   const Padding(
                     padding: EdgeInsets.only(left: 4, bottom: 10),
                     child: Text(
@@ -295,10 +270,47 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
-                  for (final item in accountItems) ...[
-                    _SettingRow(item: item),
-                    const SizedBox(height: 8),
-                  ],
+                  _SettingRow(
+                    item: _SettingItem(
+                      icon: Icons.person_outline,
+                      label: 'Edit Profile',
+                      subtitle: 'Update your display name',
+                      color: const Color(0xFF25B8A3),
+                      onTap:
+                          profile == null ? null : () => _editName(context, profile.name),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ProfileStatCard(
+                          icon: Icons.receipt_long,
+                          label: 'Transactions',
+                          value: '${transactionsProvider.transactions.length}',
+                          color: const Color(0xFF29B6F6),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ProfileStatCard(
+                          icon: Icons.flag_outlined,
+                          label: 'Saving Goals',
+                          value: '${goalsProvider.goals.length}',
+                          color: const Color(0xFFF2A23A),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ProfileStatCard(
+                          icon: Icons.savings_outlined,
+                          label: 'Saved So Far',
+                          value: formatCompactCurrency(goalsProvider.totalSaved),
+                          color: const Color(0xFF24B37E),
+                        ),
+                      ),
+                    ],
+                  ),
                   if (profileProvider.errorMessage != null) ...[
                     const SizedBox(height: 12),
                     Text(
@@ -311,8 +323,68 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                   const SizedBox(height: 16),
                   GestureDetector(
+                    onTap: authProvider.isDeletingAccount
+                        ? null
+                        : () => _deleteAccount(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppTheme.expense.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppTheme.expense.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: authProvider.isDeletingAccount
+                                ? const Padding(
+                                    padding: EdgeInsets.all(10),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppTheme.expense,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.delete_outline,
+                                    color: AppTheme.expense,
+                                    size: 20,
+                                  ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Delete Account',
+                                style: TextStyle(
+                                  color: AppTheme.expense,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'Permanently remove your account and saved data',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.mutedForeground,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  GestureDetector(
                     onTap: () async {
-                      final authProvider = context.read<AuthProvider>();
                       final navigator = Navigator.of(context);
                       await authProvider.signOut();
                       if (mounted) {
@@ -418,6 +490,7 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isInteractive = item.onTap != null;
     return InkWell(
       onTap: item.onTap,
       borderRadius: BorderRadius.circular(16),
@@ -457,9 +530,66 @@ class _SettingRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppTheme.mutedForeground),
+            if (isInteractive)
+              const Icon(Icons.chevron_right, color: AppTheme.mutedForeground),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileStatCard extends StatelessWidget {
+  const _ProfileStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppTheme.mutedForeground,
+            ),
+          ),
+        ],
       ),
     );
   }

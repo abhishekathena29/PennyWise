@@ -5,6 +5,7 @@ import '../../../sheets/notifications_sheet.dart';
 import '../../../utils/slide_route.dart';
 import '../../../widgets/bottom_nav.dart';
 import '../../../widgets/header.dart';
+import '../../chat/screens/chat_view.dart';
 import '../../analytics/screens/analytics_view.dart';
 import '../../goals/models/savings_goal.dart';
 import '../../goals/providers/goals_provider.dart';
@@ -93,6 +94,7 @@ class _HomeControllerState extends State<HomeController> {
               userName: profile?.name ?? '',
               onSettingsClick: () => _openSettings(context),
               onNotificationsClick: () => _openNotifications(context),
+              onChatClick: () => _openChat(context),
             ),
             if (transactionsProvider.errorMessage != null ||
                 goalsProvider.errorMessage != null)
@@ -152,6 +154,10 @@ class _HomeControllerState extends State<HomeController> {
       backgroundColor: Colors.transparent,
       builder: (_) => ContributeSheet(goal: goal),
     );
+  }
+
+  void _openChat(BuildContext context) {
+    Navigator.of(context).push(SlideRoute(page: const ChatView()));
   }
 
   void _openSettings(BuildContext context) {

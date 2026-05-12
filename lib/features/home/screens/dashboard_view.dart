@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/app_theme.dart';
 import '../../../widgets/goal_progress.dart';
 import '../../../widgets/quick_stats.dart';
 import '../../../widgets/safe_to_spend_card.dart';
@@ -91,7 +92,12 @@ class DashboardView extends StatelessWidget {
           children: [
             const Text(
               'Recent Activity',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.foreground,
+                letterSpacing: -0.2,
+              ),
             ),
             TextButton(onPressed: onSeeAll, child: const Text('See all')),
           ],

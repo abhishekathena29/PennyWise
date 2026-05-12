@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../core/services/gemini_service.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/widgets/auth_gate.dart';
+import '../features/chat/providers/chat_provider.dart';
 import '../features/goals/data/goals_repository.dart';
 import '../features/goals/providers/goals_provider.dart';
 import '../features/profile/data/profile_repository.dart';
@@ -34,10 +36,19 @@ class PennyWiseApp extends StatelessWidget {
           create: (context) =>
               GoalsRepository(context.read<FirebaseFirestore>()),
         ),
+        Provider(
+          create: (context) =>
+              GeminiService(context.read<FirebaseFirestore>()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ChatProvider(context.read<GeminiService>()),
+        ),
         ChangeNotifierProvider(
           create: (context) => AuthProvider(
             context.read<firebase_auth.FirebaseAuth>(),
             context.read<ProfileRepository>(),
+            context.read<TransactionsRepository>(),
+            context.read<GoalsRepository>(),
           ),
         ),
         ChangeNotifierProxyProvider<AuthProvider, ProfileProvider>(

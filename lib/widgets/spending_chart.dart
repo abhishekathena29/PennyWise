@@ -51,7 +51,11 @@ class SpendingChart extends StatelessWidget {
           child: Text(
             'No spending data yet.\nAdd expenses to see breakdown.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.mutedForeground, fontSize: 12),
+            style: TextStyle(
+              color: AppTheme.mutedForeground,
+              fontSize: 13,
+              height: 1.5,
+            ),
           ),
         ),
       );
@@ -75,11 +79,20 @@ class SpendingChart extends StatelessWidget {
             children: const [
               Text(
                 'Spending Breakdown',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppTheme.foreground,
+                  letterSpacing: -0.2,
+                ),
               ),
               Text(
                 'This month',
-                style: TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.mutedForeground,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -146,7 +159,7 @@ class _SpendingRow extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(item.icon, style: const TextStyle(fontSize: 18)),
+                  Text(item.icon, style: const TextStyle(fontSize: 16)),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -154,6 +167,7 @@ class _SpendingRow extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
+                        color: AppTheme.foreground,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -170,6 +184,8 @@ class _SpendingRow extends StatelessWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
+                    color: AppTheme.foreground,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -178,18 +194,19 @@ class _SpendingRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppTheme.mutedForeground,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 7),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),
           child: LinearProgressIndicator(
             value: barWidth.clamp(0, 1),
-            minHeight: 6,
+            minHeight: 5,
             backgroundColor: AppTheme.muted,
             color: item.color,
           ),

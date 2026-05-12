@@ -1,1 +1,31 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"pennywise-15318","appId":"1:770860261025:android:551e6c59f86e9c11fb9ae0","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"pennywise-15318","appId":"1:770860261025:ios:2cf7d451896cc565fb9ae0","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"pennywise-15318","configurations":{"android":"1:770860261025:android:551e6c59f86e9c11fb9ae0","ios":"1:770860261025:ios:2cf7d451896cc565fb9ae0","web":"1:770860261025:web:141874c67fba7b0dfb9ae0"}}}}}}
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "pennywise-15318",
+                    "appId": "1:770860261025:android:c75b1913ca436f70fb9ae0",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "ios": {
+                "default": {
+                    "projectId": "pennywise-15318",
+                    "appId": "1:770860261025:ios:2cf7d451896cc565fb9ae0",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "ios/Runner/GoogleService-Info.plist"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "pennywise-15318",
+                    "configurations": {
+                        "android": "1:770860261025:android:c75b1913ca436f70fb9ae0",
+                        "ios": "1:770860261025:ios:2cf7d451896cc565fb9ae0",
+                        "web": "1:770860261025:web:141874c67fba7b0dfb9ae0"
+                    }
+                }
+            }
+        }
+    }
+}

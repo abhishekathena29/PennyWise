@@ -23,28 +23,28 @@ class QuickStats extends StatelessWidget {
       _StatData(
         label: 'Income',
         value: income,
-        icon: Icons.trending_up,
+        icon: Icons.trending_up_rounded,
         color: AppTheme.income,
         bgColor: AppTheme.income.withValues(alpha: 0.1),
       ),
       _StatData(
-        label: 'Expenses',
+        label: 'Spent',
         value: expenses,
-        icon: Icons.trending_down,
+        icon: Icons.trending_down_rounded,
         color: AppTheme.expense,
         bgColor: AppTheme.expense.withValues(alpha: 0.1),
       ),
       _StatData(
         label: 'Saved',
         value: savings,
-        icon: Icons.account_balance_wallet,
+        icon: Icons.savings_outlined,
         color: AppTheme.primary,
         bgColor: AppTheme.primary.withValues(alpha: 0.1),
       ),
       _StatData(
         label: 'Goals',
         value: goalsProgress.toDouble(),
-        icon: Icons.flag,
+        icon: Icons.flag_rounded,
         color: const Color(0xFF7E57C2),
         bgColor: const Color(0xFF7E57C2).withValues(alpha: 0.1),
         isPercent: true,
@@ -54,7 +54,7 @@ class QuickStats extends StatelessWidget {
     return Row(
       children: [
         for (int i = 0; i < stats.length; i++) ...[
-          if (i > 0) const SizedBox(width: 10),
+          if (i > 0) const SizedBox(width: 8),
           Expanded(child: _StatCard(stat: stats[i])),
         ],
       ],
@@ -91,16 +91,16 @@ class _StatCard extends StatelessWidget {
         ? '${stat.value.toStringAsFixed(0)}%'
         : formatCompactCurrency(stat.value);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
       decoration: BoxDecoration(
         color: AppTheme.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.7)),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -108,13 +108,13 @@ class _StatCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: stat.bgColor,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(stat.icon, size: 20, color: stat.color),
+            child: Icon(stat.icon, size: 18, color: stat.color),
           ),
           const SizedBox(height: 8),
           FittedBox(
@@ -122,19 +122,22 @@ class _StatCard extends StatelessWidget {
             child: Text(
               valueText,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: stat.color,
+                letterSpacing: -0.3,
               ),
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             stat.label,
             style: const TextStyle(
               fontSize: 11,
+              fontWeight: FontWeight.w500,
               color: AppTheme.mutedForeground,
+              letterSpacing: 0.2,
             ),
             textAlign: TextAlign.center,
           ),

@@ -1,12 +1,14 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/services/gemini_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/formatters.dart';
 import '../../transactions/models/category.dart';
 import '../../transactions/models/transaction.dart';
 
-class AnalyticsView extends StatelessWidget {
+class AnalyticsView extends StatefulWidget {
   const AnalyticsView({
     super.key,
     required this.transactions,
@@ -23,6 +25,70 @@ class AnalyticsView extends StatelessWidget {
   final double monthlyExpenses;
 
   @override
+  State<AnalyticsView> createState() => _AnalyticsViewState();
+}
+
+class _AnalyticsViewState extends State<AnalyticsView> {
+  String? _aiInsights;
+  bool _isLoadingInsights = false;
+  String? _insightsError;
+
+  Future<void> _generateInsights() async {
+    setState(() {
+      _isLoadingInsights = true;
+      _insightsError = null;
+    });
+
+    try {
+      final gemini = context.read<GeminiService>();
+      await gemini.ensureInitialized();
+
+      if (!gemini.isInitialized) {
+        setState(() {
+          _insightsError = gemini.initError;
+          _isLoadingInsights = false;
+        });
+        return;
+      }
+
+      // Build category map with names
+      final namedCategorySpending = <String, double>{};
+      for (final entry in widget.categorySpending.entries) {
+        final cat = widget.categories.firstWhere(
+          (c) => c.id == entry.key,
+          orElse: () => const Category(
+            id: 'other',
+            name: 'Other',
+            icon: '📦',
+            color: AppTheme.mutedForeground,
+          ),
+        );
+        namedCategorySpending[cat.name] = entry.value;
+      }
+
+      final insights = await gemini.analyzeTransactions(
+        monthlyIncome: widget.monthlyIncome,
+        monthlyExpenses: widget.monthlyExpenses,
+        categorySpending: namedCategorySpending,
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiInsights = insights;
+          _isLoadingInsights = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _insightsError = 'Failed to generate insights: $e';
+          _isLoadingInsights = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final last7Days = List.generate(
@@ -35,7 +101,7 @@ class AnalyticsView extends StatelessWidget {
     );
 
     final dailyData = last7Days.map((day) {
-      final total = transactions
+      final total = widget.transactions
           .where((transaction) => transaction.isExpense)
           .where((transaction) {
             return transaction.date.year == day.year &&
@@ -46,8 +112,8 @@ class AnalyticsView extends StatelessWidget {
       return _DayPoint(day: day, amount: total);
     }).toList();
 
-    final categoryData = categorySpending.entries.map((entry) {
-      final category = categories.firstWhere(
+    final categoryData = widget.categorySpending.entries.map((entry) {
+      final category = widget.categories.firstWhere(
         (item) => item.id == entry.key,
         orElse: () => const Category(
           id: 'other',
@@ -62,11 +128,14 @@ class AnalyticsView extends StatelessWidget {
         color: category.color,
         icon: category.icon,
       );
-    }).toList()..sort((left, right) => right.amount.compareTo(left.amount));
+    }).toList()
+      ..sort((left, right) => right.amount.compareTo(left.amount));
 
     final topCategories = categoryData.take(5).toList();
-    final savingsRate = monthlyIncome > 0
-        ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100
+    final savingsRate = widget.monthlyIncome > 0
+        ? ((widget.monthlyIncome - widget.monthlyExpenses) /
+                widget.monthlyIncome) *
+            100
         : 0.0;
 
     return Column(
@@ -74,7 +143,12 @@ class AnalyticsView extends StatelessWidget {
       children: [
         const Text(
           'Analytics',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.foreground,
+            letterSpacing: -0.4,
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -84,10 +158,10 @@ class AnalyticsView extends StatelessWidget {
                 icon: Icons.trending_up,
                 label: 'Net Balance',
                 value: formatCurrency(
-                  monthlyIncome - monthlyExpenses,
+                  widget.monthlyIncome - widget.monthlyExpenses,
                   decimals: 0,
                 ),
-                valueColor: (monthlyIncome - monthlyExpenses) >= 0
+                valueColor: (widget.monthlyIncome - widget.monthlyExpenses) >= 0
                     ? AppTheme.income
                     : AppTheme.expense,
               ),
@@ -188,7 +262,175 @@ class AnalyticsView extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        _AiInsightsCard(
+          isLoading: _isLoadingInsights,
+          insights: _aiInsights,
+          error: _insightsError,
+          onGenerate: _generateInsights,
+        ),
       ],
+    );
+  }
+}
+
+class _AiInsightsCard extends StatelessWidget {
+  const _AiInsightsCard({
+    required this.isLoading,
+    required this.insights,
+    required this.error,
+    required this.onGenerate,
+  });
+
+  final bool isLoading;
+  final String? insights;
+  final String? error;
+  final VoidCallback onGenerate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: AppTheme.darkGradient,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'AI Financial Insights',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              if (insights != null && !isLoading)
+                GestureDetector(
+                  onTap: onGenerate,
+                  child: const Icon(
+                    Icons.refresh,
+                    color: Colors.white60,
+                    size: 18,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Analyzing your finances...',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            )
+          else if (error != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  error!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: onGenerate,
+                  child: const Text(
+                    'Retry',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (insights != null)
+            Text(
+              insights!,
+              style: const TextStyle(
+                color: Colors.white,
+                height: 1.5,
+                fontSize: 13,
+              ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Get personalized insights about your spending, savings rate, and financial health powered by Gemini AI.',
+                  style: TextStyle(color: Colors.white70, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: onGenerate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Generate Insights',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }

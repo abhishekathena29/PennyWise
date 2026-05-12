@@ -43,4 +43,15 @@ class GoalsRepository {
       'currentAmount': currentAmount,
     }, SetOptions(merge: true));
   }
+
+  Future<void> deleteAllGoals(String uid, Iterable<String> ids) async {
+    if (ids.isEmpty) {
+      return;
+    }
+    final batch = _firestore.batch();
+    for (final id in ids) {
+      batch.delete(_goals(uid).doc(id));
+    }
+    await batch.commit();
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
+import '../../../widgets/app_logo.dart';
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key, required this.onComplete, this.userName});
@@ -138,9 +139,11 @@ class _OnboardingFlowState extends State<_OnboardingFlow> {
                                 color: AppTheme.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(
-                                Icons.account_balance_wallet_outlined,
-                                color: AppTheme.primary,
+                              child: const AppLogo(
+                                size: 34,
+                                padding: 5,
+                                backgroundColor: Colors.transparent,
+                                borderRadius: BorderRadius.all(Radius.circular(12)),
                               ),
                             ),
                             const SizedBox(width: 10),

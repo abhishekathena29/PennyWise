@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/services/gemini_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/formatters.dart';
+import '../../transactions/providers/transactions_provider.dart';
 import '../models/savings_goal.dart';
 import '../providers/goals_provider.dart';
 
-class GoalsView extends StatelessWidget {
+class GoalsView extends StatefulWidget {
   const GoalsView({
     super.key,
     required this.goals,
@@ -21,13 +23,75 @@ class GoalsView extends StatelessWidget {
   final ValueChanged<String> onDeleteGoal;
 
   @override
+  State<GoalsView> createState() => _GoalsViewState();
+}
+
+class _GoalsViewState extends State<GoalsView> {
+  String? _aiAdvice;
+  bool _isLoadingAdvice = false;
+  String? _adviceError;
+
+  Future<void> _generateAdvice() async {
+    setState(() {
+      _isLoadingAdvice = true;
+      _adviceError = null;
+    });
+
+    try {
+      final gemini = context.read<GeminiService>();
+      final transactions = context.read<TransactionsProvider>();
+      await gemini.ensureInitialized();
+
+      if (!gemini.isInitialized) {
+        setState(() {
+          _adviceError = gemini.initError;
+          _isLoadingAdvice = false;
+        });
+        return;
+      }
+      final goalMaps = widget.goals
+          .map(
+            (g) => {
+              'name': g.name,
+              'target': g.targetAmount.toStringAsFixed(0),
+              'current': g.currentAmount.toStringAsFixed(0),
+              'deadline': g.deadline.toIso8601String().split('T').first,
+              'priority': g.priority.name,
+            },
+          )
+          .toList();
+
+      final advice = await gemini.analyzeGoals(
+        goals: goalMaps,
+        monthlyIncome: transactions.monthlyIncome,
+        monthlyExpenses: transactions.monthlyExpenses,
+      );
+
+      if (mounted) {
+        setState(() {
+          _aiAdvice = advice;
+          _isLoadingAdvice = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _adviceError = 'Failed to generate advice: $e';
+          _isLoadingAdvice = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final goalsProvider = context.watch<GoalsProvider>();
-    final totalSaved = goals.fold(0.0, (sum, goal) => sum + goal.currentAmount);
-    final totalTarget = goals.fold(0.0, (sum, goal) => sum + goal.targetAmount);
-    final overallProgress = totalTarget > 0
-        ? (totalSaved / totalTarget) * 100
-        : 0.0;
+    final totalSaved =
+        widget.goals.fold(0.0, (sum, goal) => sum + goal.currentAmount);
+    final totalTarget =
+        widget.goals.fold(0.0, (sum, goal) => sum + goal.targetAmount);
+    final overallProgress =
+        totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,10 +101,15 @@ class GoalsView extends StatelessWidget {
           children: [
             const Text(
               'Savings Goals',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.foreground,
+                letterSpacing: -0.4,
+              ),
             ),
             GestureDetector(
-              onTap: onAddGoal,
+              onTap: widget.onAddGoal,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -70,7 +139,7 @@ class GoalsView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        if (goals.isNotEmpty)
+        if (widget.goals.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -104,7 +173,7 @@ class GoalsView extends StatelessWidget {
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         Text(
-                          '${goals.length} active goals',
+                          '${widget.goals.length} active goals',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.mutedForeground,
@@ -150,7 +219,7 @@ class GoalsView extends StatelessWidget {
               ],
             ),
           ),
-        if (goals.isNotEmpty) ...[
+        if (widget.goals.isNotEmpty) ...[
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(18),
@@ -176,9 +245,16 @@ class GoalsView extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _AiGoalAdviceCard(
+            isLoading: _isLoadingAdvice,
+            advice: _aiAdvice,
+            error: _adviceError,
+            onGenerate: _generateAdvice,
+          ),
         ],
         const SizedBox(height: 16),
-        if (goals.isEmpty)
+        if (widget.goals.isEmpty)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 18),
             decoration: BoxDecoration(
@@ -206,7 +282,7 @@ class GoalsView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: onAddGoal,
+                  onPressed: widget.onAddGoal,
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Create Your First Goal'),
                   style: ElevatedButton.styleFrom(
@@ -223,16 +299,183 @@ class GoalsView extends StatelessWidget {
         else
           Column(
             children: [
-              for (final goal in goals)
+              for (final goal in widget.goals)
                 _GoalCard(
                   goal: goal,
                   plan: goalsProvider.planFor(goal.id),
-                  onContribute: () => onContribute(goal),
-                  onDelete: () => onDeleteGoal(goal.id),
+                  onContribute: () => widget.onContribute(goal),
+                  onDelete: () => widget.onDeleteGoal(goal.id),
                 ),
             ],
           ),
       ],
+    );
+  }
+}
+
+class _AiGoalAdviceCard extends StatelessWidget {
+  const _AiGoalAdviceCard({
+    required this.isLoading,
+    required this.advice,
+    required this.error,
+    required this.onGenerate,
+  });
+
+  final bool isLoading;
+  final String? advice;
+  final String? error;
+  final VoidCallback onGenerate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.primary.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppTheme.primary,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'AI Goal Advisor',
+                  style: TextStyle(
+                    color: AppTheme.foreground,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              if (advice != null && !isLoading)
+                GestureDetector(
+                  onTap: onGenerate,
+                  child: const Icon(
+                    Icons.refresh,
+                    color: AppTheme.primary,
+                    size: 18,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (isLoading)
+            const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Analyzing your goals...',
+                  style: TextStyle(color: AppTheme.mutedForeground),
+                ),
+              ],
+            )
+          else if (error != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  error!,
+                  style: const TextStyle(
+                    color: AppTheme.expense,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: onGenerate,
+                  child: const Text(
+                    'Retry',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (advice != null)
+            Text(
+              advice!,
+              style: const TextStyle(
+                color: AppTheme.foreground,
+                height: 1.5,
+                fontSize: 13,
+              ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Get personalized tips from Gemini AI on how to reach your goals faster.',
+                  style: TextStyle(
+                    color: AppTheme.mutedForeground,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: onGenerate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Get AI Tips',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }

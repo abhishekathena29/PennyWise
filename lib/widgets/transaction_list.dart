@@ -20,12 +20,34 @@ class TransactionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (transactions.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
         child: Center(
-          child: Text(
-            'No transactions yet',
-            style: TextStyle(color: AppTheme.mutedForeground),
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.muted,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_outlined,
+                  color: AppTheme.mutedForeground,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'No transactions yet',
+                style: TextStyle(
+                  color: AppTheme.mutedForeground,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -85,15 +107,16 @@ class _TransactionDayGroup extends StatelessWidget {
               Text(
                 formatDateLabel(date),
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppTheme.mutedForeground,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
                 ),
               ),
               Text(
                 '-${formatCurrency(dailyTotal, decimals: 2)}',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppTheme.expense,
                   fontWeight: FontWeight.w600,
                 ),
@@ -139,83 +162,109 @@ class _TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppTheme.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: category.color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            alignment: Alignment.center,
-            child: Text(category.icon, style: const TextStyle(fontSize: 20)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.7)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {},
+          splashColor: AppTheme.primary.withValues(alpha: 0.05),
+          highlightColor: AppTheme.primary.withValues(alpha: 0.03),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
               children: [
-                Text(
-                  category.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: category.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(category.icon, style: const TextStyle(fontSize: 19)),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        category.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.foreground,
+                        ),
+                      ),
+                      if (transaction.note.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          transaction.note,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.mutedForeground,
+                            height: 1.3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (transaction.note.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    transaction.note,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.mutedForeground,
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${transaction.isExpense ? '-' : '+'}${formatCurrency(transaction.amount, decimals: 2)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: transaction.isExpense
+                            ? AppTheme.expense
+                            : AppTheme.income,
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 2),
+                    Text(
+                      formatTime(transaction.date),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.mutedForeground,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 2),
+                GestureDetector(
+                  onTap: () => onDelete(transaction.id),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 17,
+                      color: AppTheme.mutedForeground.withValues(alpha: 0.7),
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${transaction.isExpense ? '-' : '+'}${formatCurrency(transaction.amount, decimals: 2)}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: transaction.isExpense
-                      ? AppTheme.expense
-                      : AppTheme.income,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                formatTime(transaction.date),
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.mutedForeground,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            onPressed: () => onDelete(transaction.id),
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 18,
-              color: AppTheme.expense,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

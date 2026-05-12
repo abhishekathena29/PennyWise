@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../goals/data/goals_repository.dart';
 import '../../profile/data/profile_repository.dart';
+import '../../transactions/data/transactions_repository.dart';
 
 enum AuthFlow { login, signup }
 
@@ -30,7 +32,12 @@ class AuthResult {
 }
 
 class AuthProvider extends ChangeNotifier {
-  AuthProvider(this._firebaseAuth, this._profileRepository) {
+  AuthProvider(
+    this._firebaseAuth,
+    this._profileRepository,
+    this._transactionsRepository,
+    this._goalsRepository,
+  ) {
     _authSubscription = _firebaseAuth.authStateChanges().listen((user) {
       _firebaseUser = user;
       notifyListeners();
@@ -40,18 +47,22 @@ class AuthProvider extends ChangeNotifier {
 
   final auth.FirebaseAuth _firebaseAuth;
   final ProfileRepository _profileRepository;
+  final TransactionsRepository _transactionsRepository;
+  final GoalsRepository _goalsRepository;
 
   StreamSubscription<auth.User?>? _authSubscription;
   auth.User? _firebaseUser;
   bool _isInitialized = false;
   bool _hasSeenOnboarding = false;
   bool _isSubmitting = false;
+  bool _isDeletingAccount = false;
   AuthFeedback? _lastFeedback;
 
   auth.User? get firebaseUser => _firebaseUser;
   bool get isInitialized => _isInitialized;
   bool get hasSeenOnboarding => _hasSeenOnboarding;
   bool get isSubmitting => _isSubmitting;
+  bool get isDeletingAccount => _isDeletingAccount;
   AuthFeedback? get lastFeedback => _lastFeedback;
   bool get isAuthenticated => _firebaseUser != null;
 
@@ -106,6 +117,46 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signOut() async {
     _lastFeedback = null;
     await _firebaseAuth.signOut();
+  }
+
+  Future<AuthResult> deleteAccount({
+    required Iterable<String> transactionIds,
+    required Iterable<String> goalIds,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      return AuthResult(
+        isSuccess: false,
+        feedback: _failure(
+          title: 'No active session',
+          message: 'Log in again before deleting the account.',
+        ),
+      );
+    }
+
+    _isDeletingAccount = true;
+    _lastFeedback = null;
+    notifyListeners();
+    try {
+      final uid = user.uid;
+      await user.delete();
+      await _transactionsRepository.deleteAllTransactions(uid, transactionIds);
+      await _goalsRepository.deleteAllGoals(uid, goalIds);
+      await _profileRepository.deleteProfile(uid);
+      return const AuthResult(isSuccess: true);
+    } on auth.FirebaseAuthException catch (error) {
+      _lastFeedback = _mapDeleteAccountError(error);
+      return AuthResult(isSuccess: false, feedback: _lastFeedback);
+    } catch (_) {
+      _lastFeedback = _failure(
+        title: 'Delete failed',
+        message: 'Unable to delete the account right now. Please try again.',
+      );
+      return AuthResult(isSuccess: false, feedback: _lastFeedback);
+    } finally {
+      _isDeletingAccount = false;
+      notifyListeners();
+    }
   }
 
   Future<AuthResult> _runAuthAction(
@@ -195,6 +246,27 @@ class AuthProvider extends ChangeNotifier {
         return _failure(
           title: flow == AuthFlow.login ? 'Login failed' : 'Sign up failed',
           message: error.message ?? 'Authentication failed. Please try again.',
+        );
+    }
+  }
+
+  AuthFeedback _mapDeleteAccountError(auth.FirebaseAuthException error) {
+    switch (error.code) {
+      case 'requires-recent-login':
+        return _failure(
+          title: 'Recent login required',
+          message:
+              'For security, log out and sign in again before deleting your account.',
+        );
+      case 'network-request-failed':
+        return _failure(
+          title: 'Network error',
+          message: 'Check your internet connection and try again.',
+        );
+      default:
+        return _failure(
+          title: 'Delete failed',
+          message: error.message ?? 'Unable to delete your account right now.',
         );
     }
   }

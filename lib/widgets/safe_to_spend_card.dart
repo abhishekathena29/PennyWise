@@ -70,6 +70,8 @@ class _SafeToSpendCardState extends State<SafeToSpendCard>
         : percentUsed > 60
         ? AppTheme.warning
         : const Color(0xFF2EECC8); // bright cyan matching design
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final useCompactLayout = screenWidth < 380;
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -190,87 +192,65 @@ class _SafeToSpendCardState extends State<SafeToSpendCard>
                 ),
                 const SizedBox(height: 18),
                 // Main content row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Column(
+                useCompactLayout
+                    ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Safe to Spend',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              formatCurrency(widget.safeToSpend, decimals: 2),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 34,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Reserving ${formatCurrency(widget.goalReserveThisMonth, decimals: 0)} for goals over the next ${widget.daysLeftInMonth} days.',
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 12,
-                              height: 1.35,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Flexible(
-                                child: _HeroMetric(
-                                  label: 'Today',
-                                  value: formatCurrency(
-                                    widget.todaySpent,
-                                    decimals: 0,
-                                  ),
-                                  icon: Icons.trending_down,
+                          AnimatedBuilder(
+                            animation: _ringAnimation,
+                            builder: (context, child) {
+                              return Align(
+                                alignment: Alignment.centerRight,
+                                child: CircularProgressRing(
+                                  value: remaining > 0 ? remaining : 0,
+                                  max: widget.monthlyBudget == 0
+                                      ? 1
+                                      : widget.monthlyBudget,
+                                  color: ringColor,
+                                  animValue: _ringAnimation.value,
+                                  size: 112,
                                 ),
-                              ),
-                              const SizedBox(width: 18),
-                              Flexible(
-                                child: _HeroMetric(
-                                  label: 'Goal reserve/day',
-                                  value: formatCurrency(
-                                    widget.dailySavingsRequired,
-                                    decimals: 0,
-                                  ),
-                                  icon: Icons.trending_up,
-                                ),
-                              ),
-                            ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 18),
+                          _CardSummary(
+                            safeToSpend: widget.safeToSpend,
+                            goalReserveThisMonth: widget.goalReserveThisMonth,
+                            daysLeftInMonth: widget.daysLeftInMonth,
+                            todaySpent: widget.todaySpent,
+                            dailySavingsRequired: widget.dailySavingsRequired,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: _CardSummary(
+                              safeToSpend: widget.safeToSpend,
+                              goalReserveThisMonth: widget.goalReserveThisMonth,
+                              daysLeftInMonth: widget.daysLeftInMonth,
+                              todaySpent: widget.todaySpent,
+                              dailySavingsRequired: widget.dailySavingsRequired,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          AnimatedBuilder(
+                            animation: _ringAnimation,
+                            builder: (context, child) {
+                              return CircularProgressRing(
+                                value: remaining > 0 ? remaining : 0,
+                                max: widget.monthlyBudget == 0
+                                    ? 1
+                                    : widget.monthlyBudget,
+                                color: ringColor,
+                                animValue: _ringAnimation.value,
+                              );
+                            },
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    AnimatedBuilder(
-                      animation: _ringAnimation,
-                      builder: (context, child) {
-                        return CircularProgressRing(
-                          value: remaining > 0 ? remaining : 0,
-                          max: widget.monthlyBudget == 0
-                              ? 1
-                              : widget.monthlyBudget,
-                          color: ringColor,
-                          animValue: _ringAnimation.value,
-                        );
-                      },
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 20),
                 // Budget bar
                 Row(
@@ -323,6 +303,80 @@ class _SafeToSpendCardState extends State<SafeToSpendCard>
   }
 }
 
+class _CardSummary extends StatelessWidget {
+  const _CardSummary({
+    required this.safeToSpend,
+    required this.goalReserveThisMonth,
+    required this.daysLeftInMonth,
+    required this.todaySpent,
+    required this.dailySavingsRequired,
+  });
+
+  final double safeToSpend;
+  final double goalReserveThisMonth;
+  final int daysLeftInMonth;
+  final double todaySpent;
+  final double dailySavingsRequired;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Safe to Spend',
+          style: TextStyle(color: Colors.white60, fontSize: 12),
+        ),
+        const SizedBox(height: 6),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            formatCurrency(safeToSpend, decimals: 2),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Reserving ${formatCurrency(goalReserveThisMonth, decimals: 0)} for goals over the next $daysLeftInMonth days.',
+          style: const TextStyle(
+            color: Colors.white60,
+            fontSize: 12,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 18,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: 110,
+              child: _HeroMetric(
+                label: 'Today',
+                value: formatCurrency(todaySpent, decimals: 0),
+                icon: Icons.trending_down,
+              ),
+            ),
+            SizedBox(
+              width: 128,
+              child: _HeroMetric(
+                label: 'Goal reserve/day',
+                value: formatCurrency(dailySavingsRequired, decimals: 0),
+                icon: Icons.trending_up,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _HeroMetric extends StatelessWidget {
   const _HeroMetric({
     required this.label,
@@ -344,9 +398,13 @@ class _HeroMetric extends StatelessWidget {
           children: [
             Icon(icon, size: 12, color: Colors.white54),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white60, fontSize: 11),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white60, fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -371,18 +429,20 @@ class CircularProgressRing extends StatelessWidget {
     required this.max,
     required this.color,
     this.animValue = 1.0,
+    this.size = 120,
   });
 
   final double value;
   final double max;
   final Color color;
   final double animValue;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 120,
-      height: 120,
+      width: size,
+      height: size,
       child: CustomPaint(
         painter: _RingPainter(
           progress: max == 0 ? 0 : (value / max).clamp(0, 1) * animValue,

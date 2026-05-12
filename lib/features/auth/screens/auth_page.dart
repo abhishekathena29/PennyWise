@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/widgets/app_feedback_snackbar.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/app_logo.dart';
 import '../../../widgets/input_field.dart';
 import '../providers/auth_provider.dart';
 
@@ -115,10 +116,11 @@ class _AuthPageState extends State<AuthPage> {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: const Icon(
-                    Icons.account_balance_wallet,
-                    color: Colors.white,
-                    size: 40,
+                  child: const AppLogo(
+                    size: 80,
+                    padding: 14,
+                    backgroundColor: Colors.transparent,
+                    borderRadius: BorderRadius.all(Radius.circular(24)),
                   ),
                 ),
                 const SizedBox(height: 18),

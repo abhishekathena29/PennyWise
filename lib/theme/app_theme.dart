@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color background = Color(0xFFF7FAFA);
@@ -25,22 +29,113 @@ class AppTheme {
     colors: [Color(0xFF1C3D39), Color(0xFF234B44)],
   );
 
+  // True on iOS device/simulator; false on web, Android, desktop
+  static bool get _isIOS => !kIsWeb && Platform.isIOS;
+
+  /// Returns the correct fontFamily string for non-white-labeled text.
+  /// On iOS, returns null so the system SF Pro is used.
+  /// On all other platforms, returns the Inter font family from google_fonts.
+  static String? get fontFamily =>
+      _isIOS ? null : GoogleFonts.inter().fontFamily;
+
+  static TextTheme get _textTheme {
+    const base = TextTheme(
+      displayLarge: TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: foreground,
+        letterSpacing: -1.0,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        color: foreground,
+        letterSpacing: -0.5,
+      ),
+      headlineSmall: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: foreground,
+        letterSpacing: -0.4,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: foreground,
+        letterSpacing: -0.3,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: foreground,
+        letterSpacing: -0.2,
+      ),
+      titleSmall: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: foreground,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: foreground,
+        height: 1.5,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+        color: foreground,
+        height: 1.45,
+      ),
+      bodySmall: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        color: mutedForeground,
+        height: 1.4,
+      ),
+      labelLarge: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: foreground,
+        letterSpacing: 0.1,
+      ),
+      labelMedium: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: mutedForeground,
+        letterSpacing: 0.2,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: mutedForeground,
+        letterSpacing: 0.3,
+      ),
+    );
+
+    // On iOS, SF Pro is the system default — no fontFamily needed
+    if (_isIOS) return base;
+
+    // On all other platforms, apply Inter via google_fonts
+    return GoogleFonts.interTextTheme(base);
+  }
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      // Setting fontFamily here ensures ALL Text widgets in the app
+      // inherit the correct font even when TextStyle doesn't specify one.
+      fontFamily: fontFamily,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         brightness: Brightness.light,
+      ).copyWith(
+        surface: background,
+        onSurface: foreground,
+        onSurfaceVariant: mutedForeground,
       ),
       scaffoldBackgroundColor: background,
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        bodyMedium: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-        bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-      ),
+      textTheme: _textTheme,
       cardTheme: const CardThemeData(
         color: card,
         surfaceTintColor: Colors.transparent,
@@ -50,6 +145,33 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          textStyle: TextStyle(
+            fontFamily: fontFamily,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          textStyle: TextStyle(
+            fontFamily: fontFamily,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          textStyle: TextStyle(
+            fontFamily: fontFamily,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
